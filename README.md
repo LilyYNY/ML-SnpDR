@@ -2,80 +2,80 @@
 
 Machine-Learning-Guided Subtype-Specific Network Drug Repurposing
 
-ML-SnpDR 基于 [subnetDR](https://github.com/LilyYNY/subnetDR) 重构 LUAD 亚型特异性网络药物重定位流程。核心改变发生在原流程第 4–6 步之后：先对第 4 步保留的全部模块完成注释、药物响应、Core34 特征和机器学习评分；每个亚型取机器学习 Top10，再结合生存和药物响应证据选出一个最优模块；最后只让这些入选模块进入 subnetDR 的第 7–9 步。
+ML-SnpDR builds on [subnetDR](https://github.com/LilyYNY/subnetDR) to provide a LUAD subtype-specific network drug-repurposing workflow. The main extension follows the original steps 4–6: all modules retained in step 4 are annotated and evaluated for drug response, Core34 features, and machine-learning scores; the top 10 ML-ranked modules from each subtype are then combined with survival and drug-response evidence to select one optimal module per subtype; finally, only the selected modules enter subnetDR steps 7–9.
 
-当前第 1–9 步均已实现。默认总入口从表达矩阵和亚型表开始，依次生成差异表达、亚型 PPI、模块划分、模块清单、注释、药物响应、Core34、ML Top10、最优模块和最终药物-靶点候选。也可以从任意已存在的中间结果开始。
+All steps from 1 through 9 are implemented. By default, the top-level runner starts from an expression matrix and subtype phenotype table, then generates differential-expression results, subtype-specific PPI networks, network modules, a module manifest, functional annotations, drug-response evidence, Core34 features, ML top-10 rankings, optimal modules, and final drug-target candidates. The pipeline can also start from any existing intermediate result.
 
-## 流程
+## Workflow
 
 ```mermaid
 flowchart TD
-    E["expression + subtype phenotype"] --> S1["01 DEPs：Wilcoxon + BH"]
+    E["expression + subtype phenotype"] --> S1["01 DEPs: Wilcoxon + BH"]
     S1 --> D["differential_expression.tsv"]
-    D --> S2["02 NetworkConstruction：亚型上调蛋白诱导 PPI"]
+    D --> S2["02 NetworkConstruction: subtype upregulated-protein PPI"]
     S2 --> N["network_manifest.tsv"]
-    N --> S3["03 ModuleDivision：Louvain / WF"]
+    N --> S3["03 ModuleDivision: Louvain / WF"]
     S3 --> S4["04 ModuleSelection"]
-    S4 --> M["module_manifest.tsv：全部大小预筛模块"]
-    M --> S5["05 ModuleAnnotation：全部模块"]
-    M --> S6["06 DrugResponse：全部模块 × 全部面板"]
-    M --> S6A["06A ModuleFeatures：全部模块 Core34"]
-    S6A --> S6B["06B MLScoring：全部模块概率 + 每亚型 Top10"]
-    S6B --> S6C["06C ModuleTriage：Top10 生存 + 药物证据筛选"]
+    S4 --> M["module_manifest.tsv: all size-prefiltered modules"]
+    M --> S5["05 ModuleAnnotation: all modules"]
+    M --> S6["06 DrugResponse: all modules × all panels"]
+    M --> S6A["06A ModuleFeatures: Core34 for all modules"]
+    S6A --> S6B["06B MLScoring: all-module probabilities + subtype Top10"]
+    S6B --> S6C["06C ModuleTriage: Top10 survival + drug-evidence filtering"]
     S6 --> S6C
     M --> S6C
-    S6C --> SEL["selected_modules.tsv：每亚型最优模块"]
-    SEL --> S7["07 SEQCre：仅入选模块"]
-    S7 --> S8["08 BindingScore：仅入选模块"]
-    S8 --> S9["09 PScore：仅入选模块"]
+    S6C --> SEL["selected_modules.tsv: optimal module per subtype"]
+    SEL --> S7["07 SEQCre: selected modules only"]
+    S7 --> S8["08 BindingScore: selected modules only"]
+    S8 --> S9["09 PScore: selected modules only"]
 ```
 
-机器学习概率表示模块的亚型代表性，不等同于疗效或可成药性。因此，ML Top10 必须继续经过生存、模块大小和药物响应证据筛选。
+ML probabilities represent how strongly a module characterizes a subtype; they do not directly indicate efficacy or druggability. The ML top 10 must therefore undergo additional filtering by survival, module size, and drug-response evidence.
 
-## 功能状态
+## Feature status
 
-| 步骤 | 函数 | 分析范围 | 主输出 | 状态 |
+| Step | Function | Analysis scope | Primary output | Status |
 |---|---|---|---|---|
-| 01 | `run_diff_expr_analysis()` | 全部样本；亚型 vs 其余样本 | `differential_expression.tsv` | 可用 |
-| 02 | `run_network_construction()` | 每亚型显著上调蛋白 × PPI 来源 | `network_manifest.tsv`、亚型 PPI | 可用 |
-| 03 | `module_division()` / `subtype_module()` | 亚型 × 网络 × Louvain/WF | `module_division_manifest.tsv` | 可用 |
-| 04 | `module_selection()` | 全部大小预筛模块 | `module_manifest.tsv` | 可用 |
-| 05 | `functional_annotation()` | manifest 全部模块 | `module_annotation.tsv` | 可用 |
-| 06 | `drug_response_analysis()` | manifest 全部模块 × 面板 | `drug_response_summary.tsv`、DRN | 可用 |
-| 06A | `prepare_module_features()` | manifest 全部模块 | `module_features.tsv`、`feature_schema.json` | 可用 |
-| 06B | `prepare_ml_scores()` / `run_nested_ml_scoring()` | 全部模块；每亚型 Top10 | `ml_scores.tsv`、`ml_top10.tsv` | 可用 |
-| 06C | `triage_modules()` | 每亚型 ML Top10 | `selected_modules.tsv`、筛选轨迹 | 可用 |
-| 07 | `run_SEQCre()` | 每亚型最优模块 | `seq_smiles_manifest.tsv` | 可用 |
-| 08 | `predict_BA()` | 每亚型最优模块 | `binding_scores.tsv` | 可用 |
-| 09 | `process_prs_dti()` | 每亚型最优模块 | `perturbation_scores.tsv`、`final_candidates.tsv` | 可用 |
+| 01 | `run_diff_expr_analysis()` | All samples; each subtype vs all other samples | `differential_expression.tsv` | Available |
+| 02 | `run_network_construction()` | Significantly upregulated proteins per subtype × PPI source | `network_manifest.tsv`, subtype PPI files | Available |
+| 03 | `module_division()` / `subtype_module()` | Subtype × network × Louvain/WF | `module_division_manifest.tsv` | Available |
+| 04 | `module_selection()` | All size-prefiltered modules | `module_manifest.tsv` | Available |
+| 05 | `functional_annotation()` | All modules in the manifest | `module_annotation.tsv` | Available |
+| 06 | `drug_response_analysis()` | All manifest modules × panels | `drug_response_summary.tsv`, DRN files | Available |
+| 06A | `prepare_module_features()` | All manifest modules | `module_features.tsv`, `feature_schema.json` | Available |
+| 06B | `prepare_ml_scores()` / `run_nested_ml_scoring()` | All modules; top 10 per subtype | `ml_scores.tsv`, `ml_top10.tsv` | Available |
+| 06C | `triage_modules()` | ML top 10 for each subtype | `selected_modules.tsv`, filtering trace | Available |
+| 07 | `run_SEQCre()` | Optimal module from each subtype | `seq_smiles_manifest.tsv` | Available |
+| 08 | `predict_BA()` | Optimal module from each subtype | `binding_scores.tsv` | Available |
+| 09 | `process_prs_dti()` | Optimal module from each subtype | `perturbation_scores.tsv`, `final_candidates.tsv` | Available |
 
-此外还提供 YAML 配置合并与校验、网络/算法名称标准化、`module_uid` 创建和解析、阶段注册表、dry-run、输入覆盖度检查、SHA256 来源追踪和逐步 QC。
+The package also provides YAML configuration merging and validation, network/algorithm name normalization, `module_uid` creation and parsing, a stage registry, dry-run planning, input-coverage checks, SHA256 provenance tracking, and stage-level QC.
 
-## 每一步输入输出总览
+## Input/output overview
 
-下表用于快速准备文件。完整字段、允许的同义列、状态列和严格校验规则见 [每一步输入输出格式](docs/io-contracts.md)。
+Use the following table to prepare inputs quickly. For complete field definitions, accepted column aliases, status fields, and strict validation rules, see the [input/output contracts](docs/io-contracts.md).
 
-| 步骤 | 自定义输入 | 最小输入格式 | 主要输出 | 下游用途 |
+| Step | Custom inputs | Minimum input format | Primary outputs | Downstream use |
 |---|---|---|---|---|
-| 01 DEPs | 表达矩阵、样本亚型表、检出率/FC/P 阈值 | 表达宽表：`gene,<sample...>`；表型：`Sample,Subtype` | `differential_expression.tsv`、显著结果、统计汇总、兼容 Excel | 第 2 步亚型蛋白集合 |
-| 02 NetworkConstruction | 差异表达表、PPI 索引或命名边文件、分数阈值 | PPI 索引至少：`network,edge_file`；边表至少两端点列 | `network_manifest.tsv`、每亚型/网络 `ppi_<subtype>.txt` | 第 3 步网络输入 |
-| 03 ModuleDivision | network manifest、网络/算法、随机种子、WF 阈值 | manifest：`network,subtype,ppi_file` | `module_division_manifest.tsv`、节点/边模块文件 | 第 4 步模块筛选输入 |
-| 04 ModuleSelection | ModuleDivision 根目录、亚型、网络、算法、大小阈值 | 节点表：`node,module`；边表：`node1,node2,module` | `module_manifest.tsv`、逐模块 `nodes.tsv/edges.tsv` | 第 5、6、6A、6C 步共享的模块全集 |
-| 05 ModuleAnnotation | `module_manifest.tsv`、GMT/TSV/CSV/XLSX 基因集、背景基因 | 长表：`term_id,gene`，可选 `database,description` | `module_annotation.tsv`、Top-N、QC | 模块生物学解释和报告 |
-| 06 DrugResponse | manifest；四个面板根目录或显式索引 | 索引：`module_uid,drug_panel,drn_file,drn_info_file` | `drug_response_summary.tsv`、`drug_response_hits.tsv`、标准化 DRN | 第 6C 步药物响应证据 |
-| 06A ModuleFeatures | manifest、全模块 Core34 表 | `module_uid` + 34 个数值特征 | `module_features.tsv`、`feature_schema.json`、QC | 第 6B 步机器学习输入 |
-| 06B MLScoring | features + schema，或已有全模块概率表 | 概率表：`module_uid,prob_C1,prob_C2,prob_C3,prob_C4` | `ml_scores.tsv`、`ml_top10.tsv` | 第 6C 步每亚型候选集合 |
-| 06C ModuleTriage | manifest、ML Top10、生存表、药物响应汇总 | 生存表至少需要 `module_uid,logrank_p,survival_direction` | `module_evidence.tsv`、`module_filtering_stepwise.tsv`、`selected_modules.tsv` | 建立第 7–9 步的入选模块边界 |
-| 07 SEQCre | selected、蛋白序列表、药物 SMILES 表 | `node,sequence`；`node,smiles` | `seq_smiles_manifest.tsv`、逐模块序列/SMILES | 第 8 步 DPI 和结合预测输入 |
-| 08 BindingScore | selected、sequence/SMILES manifest、结合分数表或预测函数 | `module_uid,target_name,drug_name,binding_score` | `binding_scores.tsv`、`binding_score_manifest.tsv` | 第 9 步结合证据 |
-| 09 PScore | selected、binding、敏感性表或 ENM/PRS 函数 | `module_uid,target_name,sensitivity` | `perturbation_scores.tsv`、`final_candidates.tsv` | 最终每亚型药物-靶点候选 |
+| 01 DEPs | Expression matrix, sample-subtype table, detection/FC/P thresholds | Expression wide table: `gene,<sample...>`; phenotype: `Sample,Subtype` | `differential_expression.tsv`, significant results, summary, compatible Excel workbook | Subtype protein sets for step 2 |
+| 02 NetworkConstruction | Differential-expression table, PPI index or named edge files, score threshold | PPI index: at least `network,edge_file`; edge table: at least two endpoint columns | `network_manifest.tsv`, `ppi_<subtype>.txt` for each subtype/network | Network input for step 3 |
+| 03 ModuleDivision | Network manifest, networks/algorithms, seed, WF threshold | Manifest: `network,subtype,ppi_file` | `module_division_manifest.tsv`, module node/edge files | Module-selection input for step 4 |
+| 04 ModuleSelection | ModuleDivision root, subtypes, networks, algorithms, size threshold | Node table: `node,module`; edge table: `node1,node2,module` | `module_manifest.tsv`, per-module `nodes.tsv/edges.tsv` | Complete module set shared by steps 5, 6, 6A, and 6C |
+| 05 ModuleAnnotation | `module_manifest.tsv`, GMT/TSV/CSV/XLSX gene sets, background genes | Long table: `term_id,gene`; optional `database,description` | `module_annotation.tsv`, Top-N results, QC | Biological interpretation and reporting |
+| 06 DrugResponse | Manifest; roots for four panels or an explicit index | Index: `module_uid,drug_panel,drn_file,drn_info_file` | `drug_response_summary.tsv`, `drug_response_hits.tsv`, standardized DRNs | Drug-response evidence for step 6C |
+| 06A ModuleFeatures | Manifest and all-module Core34 table | `module_uid` + 34 numeric features | `module_features.tsv`, `feature_schema.json`, QC | ML input for step 6B |
+| 06B MLScoring | Features + schema, or an existing all-module probability table | Probability table: `module_uid,prob_C1,prob_C2,prob_C3,prob_C4` | `ml_scores.tsv`, `ml_top10.tsv` | Per-subtype candidate set for step 6C |
+| 06C ModuleTriage | Manifest, ML top 10, survival table, drug-response summary | Survival table requires at least `module_uid,logrank_p,survival_direction` | `module_evidence.tsv`, `module_filtering_stepwise.tsv`, `selected_modules.tsv` | Defines the selected-module boundary for steps 7–9 |
+| 07 SEQCre | Selected modules, protein-sequence table, drug-SMILES table | `node,sequence`; `node,smiles` | `seq_smiles_manifest.tsv`, per-module sequences/SMILES | DPI and binding-prediction input for step 8 |
+| 08 BindingScore | Selected modules, sequence/SMILES manifest, binding-score table or predictor | `module_uid,target_name,drug_name,binding_score` | `binding_scores.tsv`, `binding_score_manifest.tsv` | Binding evidence for step 9 |
+| 09 PScore | Selected modules, binding results, sensitivity table or ENM/PRS function | `module_uid,target_name,sensitivity` | `perturbation_scores.tsv`, `final_candidates.tsv` | Final subtype-specific drug-target candidates |
 
-这里有两个不能混淆的数据边界：
+The workflow has two distinct data boundaries:
 
-- `module_manifest.tsv`：第 4 步大小预筛后的全部模块；第 5、6、6A 和 6B 步不得提前删除其中的模块。
-- `selected_modules.tsv`：第 6C 步每亚型筛出的最优模块；第 7、8、9 步只能读取这份表列出的模块和文件。
+- `module_manifest.tsv`: all modules retained by the step-4 size prefilter. Steps 5, 6, 6A, and 6B must not remove modules prematurely.
+- `selected_modules.tsv`: the optimal modules selected for each subtype in step 6C. Steps 7, 8, and 9 may read only the modules and files listed in this table.
 
-## 安装
+## Installation
 
 ```bash
 git clone https://github.com/LilyYNY/ML-SnpDR.git
@@ -85,7 +85,7 @@ conda activate mlsnpdr
 R CMD INSTALL .
 ```
 
-也可以分别安装：
+The R and Python components can also be installed separately:
 
 ```r
 remotes::install_github("LilyYNY/ML-SnpDR")
@@ -95,32 +95,32 @@ remotes::install_github("LilyYNY/ML-SnpDR")
 python -m pip install -e ".[dev]"
 ```
 
-## 统一模块主键
+## Canonical module identifier
 
-全部模块级表使用：
+All module-level tables use the following identifier:
 
 ```text
 <network_slug>__<method_slug>__<subtype>__<module>
 ```
 
-例如：
+For example:
 
 ```r
 make_module_uid("physicalPPIN", "Louvain", "C3", "M10")
 # physicalppin__louvain__C3__M10
 ```
 
-任何一步都不能靠目录名重新猜测模块身份，必须通过 `module_uid` 和显式文件路径传递。
+No stage should infer module identity from directory names. Module identity must be propagated through `module_uid` and explicit file paths.
 
-## 单步运行
+## Running individual steps
 
-以下示例展示每一步怎样直接使用上一步的输出。每个函数都允许自定义输入和输出位置，且不调用全局 `setwd()`。
+The following examples show how each step consumes the output of the preceding step. Every function accepts custom input and output paths and does not call the global `setwd()` function.
 
-### 第 1 步：亚型 vs 其余样本差异表达
+### Step 1: differential expression for each subtype vs all other samples
 
-**方法**：与 subnetDR 一致，对每个亚型分别进行 one-versus-rest Wilcoxon 秩和检验，使用 BH 校正；蛋白必须在目标组和其余样本组同时满足检出率阈值，再根据校正 P 值和 fold change 标记为 `up`、`down` 或 `non_significant`。
+**Method:** Following subnetDR, a one-versus-rest Wilcoxon rank-sum test is performed for each subtype with BH correction. A protein must meet the detection-rate threshold in both the target group and all remaining samples before it is labeled `up`, `down`, or `non_significant` according to the adjusted P value and fold change.
 
-**输入**：表达矩阵、样本亚型表，以及可自定义的检出率、fold change、P 值和多重校正参数。表达输入是宽表，第一列是基因/蛋白，其余列是样本：
+**Input:** An expression matrix, a sample-subtype table, and configurable detection-rate, fold-change, P-value, and multiple-testing parameters. The expression input is a wide table whose first column contains genes/proteins and whose remaining columns contain samples:
 
 ```text
 gene    S001    S002    S003
@@ -128,7 +128,7 @@ EGFR    10.2    8.7     4.1
 TP53    3.2     3.8     5.6
 ```
 
-亚型输入至少包含：
+The subtype input must contain at least:
 
 ```text
 Sample  Subtype
@@ -156,20 +156,20 @@ deps <- run_diff_expr_analysis(
 diff_file <- attr(deps, "result_file")
 ```
 
-**输出**：
+**Output:**
 
-- `differential_expression.tsv`：所有亚型、所有蛋白的长表，是第 2 步主输入；
-- `differential_expression_significant.tsv`：仅 `up/down`；
-- `differential_expression_summary.tsv`：每亚型各标签数量；
-- `diff_expression_results_all.xlsx`：兼容 subnetDR 的逐亚型工作表。
+- `differential_expression.tsv`: long-format results for every subtype and protein; the primary input to step 2.
+- `differential_expression_significant.tsv`: `up` and `down` results only.
+- `differential_expression_summary.tsv`: label counts for each subtype.
+- `diff_expression_results_all.xlsx`: subtype-specific worksheets compatible with subnetDR.
 
-标准长表包含 `subtype,gene,mean_target,mean_other,fold_change,log2_fold_change,p_value,p_adjust,detection_target,detection_other,label,n_target,n_other`。
+The canonical long table contains `subtype,gene,mean_target,mean_other,fold_change,log2_fold_change,p_value,p_adjust,detection_target,detection_other,label,n_target,n_other`.
 
-### 第 2 步：上调蛋白构建亚型特异 PPI
+### Step 2: subtype-specific PPI networks from upregulated proteins
 
-**方法**：默认使用第 1 步每个亚型标记为 `up` 的蛋白，并在 String、physicalPPIN、chengF 中保留两个端点都属于该集合的相互作用。PPI 来源不再写死在 `./PPI`，而由显式索引指定。
+**Method:** By default, this step uses proteins labeled `up` for each subtype in step 1 and retains interactions from String, physicalPPIN, and chengF only when both endpoints belong to that subtype's protein set. PPI sources are specified through an explicit index rather than a hard-coded `./PPI` directory.
 
-**输入**：第 1 步的 `differential_expression.tsv`，以及 PPI 索引或命名 PPI 边文件。最简单的 PPI 索引为：
+**Input:** The step-1 `differential_expression.tsv` file plus a PPI index or named PPI edge files. The simplest PPI index is:
 
 ```text
 network        edge_file
@@ -178,7 +178,7 @@ physicalPPIN   PPI/PhysicalPPIN/physicalppi.tsv
 chengF         PPI/ChengF/chengf_symbol_edges.tsv
 ```
 
-若原始 PPI 使用数据库 ID，可增加以下列：
+If the source PPI uses database identifiers, add the following columns:
 
 ```text
 network, edge_file, node1_column, node2_column,
@@ -186,7 +186,7 @@ score_column, score_min, delimiter,
 mapping_file, mapping_id_column, mapping_symbol_column, mapping_delimiter
 ```
 
-`edge_file` 和 `mapping_file` 的相对路径均相对于 PPI 索引文件解析。String 空格分隔文件可写 `delimiter=whitespace`；映射表为制表符时写 `mapping_delimiter=tab`。
+Relative `edge_file` and `mapping_file` paths are resolved against the PPI index file. Use `delimiter=whitespace` for whitespace-delimited String files and `mapping_delimiter=tab` for tab-delimited mapping tables.
 
 ```r
 networks <- run_network_construction(
@@ -202,17 +202,17 @@ networks <- run_network_construction(
 network_manifest_file <- attr(networks, "manifest_file")
 ```
 
-**输出**：
+**Output:**
 
-- `network_manifest.tsv`：一行一个亚型-网络组合；
-- `<subtype>/<network>/ppi_<subtype>.txt`：标准 `node1,node2` 边表；
-- 网络节点数、边数、来源路径、状态和 SHA256。
+- `network_manifest.tsv`: one row per subtype-network combination.
+- `<subtype>/<network>/ppi_<subtype>.txt`: canonical `node1,node2` edge table.
+- Network node/edge counts, source paths, status, and SHA256 checksums.
 
-### 第 3 步：Louvain/WF 模块划分
+### Step 3: Louvain/WF module division
 
-**方法**：`Louvain` 直接在无向、去重、无自环 PPI 上运行。`WF` 分别运行 edge-betweenness 和 label propagation，对两组模块做超几何重叠检验，再按 P 值和重叠大小确定互不重叠的共识模块。
+**Method:** `Louvain` runs directly on an undirected, deduplicated, self-loop-free PPI network. `WF` runs edge-betweenness and label propagation separately, applies a hypergeometric overlap test to the two module sets, and then uses P values and overlap size to define non-overlapping consensus modules.
 
-**输入**：第 2 步的 `network_manifest.tsv`，以及需要运行的亚型、网络、模块算法、随机种子和 WF 显著性阈值。
+**Input:** The step-2 `network_manifest.tsv` plus the requested subtypes, networks, module algorithms, random seed, and WF significance threshold.
 
 ```r
 divisions <- module_division(
@@ -229,18 +229,18 @@ divisions <- module_division(
 module_division_dir <- attr(divisions, "output_dir")
 ```
 
-**输出**：每个亚型-网络-算法组合生成：
+**Output:** Each subtype-network-algorithm combination generates:
 
-- `node_Module_<network>_<method>.txt`：`node,module`；
-- `edges_<network>_<method>.txt`：`node1,node2,module`，跨模块边为 0；
-- `edge_Module_<network>_<method>.txt`：仅模块内部边；
-- 根目录 `module_division_manifest.tsv`：记录全部组合、计数、路径、参数和 SHA256。
+- `node_Module_<network>_<method>.txt`: `node,module`.
+- `edges_<network>_<method>.txt`: `node1,node2,module`, with cross-module edges assigned to module 0.
+- `edge_Module_<network>_<method>.txt`: within-module edges only.
+- Root-level `module_division_manifest.tsv`: all combinations, counts, paths, parameters, and SHA256 checksums.
 
-### 第 4 步：ModuleSelection → manifest
+### Step 4: ModuleSelection → manifest
 
-**方法**：统计第 3 步每个模块的唯一节点数，保留 `module_size > numberCutoff` 的全部模块；排除模块 0 和自环，同时保留 subnetDR 聚合文件，并为每个模块生成唯一 `module_uid`、独立节点/边文件和 SHA256。
+**Method:** Count unique nodes in every step-3 module and retain all modules satisfying `module_size > numberCutoff`. Module 0 and self-loops are excluded. subnetDR-compatible aggregate files are retained, and each module receives a unique `module_uid`, standalone node/edge files, and SHA256 checksums.
 
-**输入**：第 3 步的模块划分根目录、亚型表、网络名、模块算法名和模块大小阈值；目录内节点表至少包含 `node,module`，边表至少包含 `node1,node2,module`。
+**Input:** The step-3 module-division root, subtype table, network names, module-algorithm names, and module-size threshold. Node tables must contain at least `node,module`, and edge tables must contain at least `node1,node2,module`.
 
 ```r
 library(MLSnpDR)
@@ -258,20 +258,20 @@ modules <- module_selection(
 manifest_file <- attr(modules, "manifest_file")
 ```
 
-**输出**：
+**Output:**
 
 - `standardized/module_manifest.tsv`
 - `standardized/modules/<module_uid>/nodes.tsv`
 - `standardized/modules/<module_uid>/edges.tsv`
-- subnetDR 兼容的聚合节点/边文件和 QC
+- subnetDR-compatible aggregate node/edge files and QC results.
 
-如果已经有 ModuleSelection 输出，可使用 `build_module_manifest()` 直接适配，无需重跑模块筛选。
+If ModuleSelection outputs already exist, use `build_module_manifest()` to adapt them directly without rerunning module selection.
 
-### 第 5 步：全部模块功能注释
+### Step 5: functional annotation of all modules
 
-**方法**：以模块节点为查询集、背景基因为 universe，对每个基因集执行超几何过度富集检验，并按指定方法做多重检验校正。注释只用于解释，不会改变进入第 6A/6B 步的模块全集。
+**Method:** Use module nodes as the query set and background genes as the universe, perform a hypergeometric over-representation test for each gene set, and apply the specified multiple-testing correction. Annotation is used for interpretation only and does not change the complete module set entering steps 6A/6B.
 
-**输入**：第 4 步的 `module_manifest.tsv`、GMT/TSV/CSV/XLSX 基因集、背景基因及富集参数。长表基因集至少包含 `term_id,gene`，可选 `database,description`。
+**Input:** The step-4 `module_manifest.tsv`, GMT/TSV/CSV/XLSX gene sets, background genes, and enrichment parameters. A long-format gene-set table must contain at least `term_id,gene`; `database,description` are optional.
 
 ```r
 annotation <- functional_annotation(
@@ -285,15 +285,15 @@ annotation <- functional_annotation(
 )
 ```
 
-`gene_set_file` 可为 TSV、CSV、XLSX 或 GMT。若不提供自定义基因集，可通过 `databases` 调用 `msigdbr`。
+`gene_set_file` may be TSV, CSV, XLSX, or GMT. If no custom gene set is supplied, `databases` can be used to query `msigdbr`.
 
-**输出**：`module_annotation.tsv`、`module_annotation_top<N>.tsv`、`module_annotation_qc.tsv`、参数表和可选逐模块注释文件。
+**Output:** `module_annotation.tsv`, `module_annotation_top<N>.tsv`, `module_annotation_qc.tsv`, a parameter table, and optional per-module annotation files.
 
-### 第 6 步：全部模块药物响应标准化
+### Step 6: drug-response standardization for all modules
 
-**方法**：对 `module_manifest.tsv` 的全部模块和全部指定药敏面板建立明确的模块-面板索引，统一已有 DRN、DRN-info、药物显著性和效应方向，并执行全覆盖审计。该步骤不根据药敏结果提前删除模块。
+**Method:** Build an explicit module-panel index for every module in `module_manifest.tsv` and every requested drug-sensitivity panel, standardize existing DRN and DRN-info files, drug significance, and effect direction, and perform a full-coverage audit. This step does not remove modules on the basis of drug-response results.
 
-**输入**：第 4 步的 `module_manifest.tsv`，以及 PRISM、GDSC1、GDSC2、CTRP2 等药物响应根目录或显式索引；索引至少包含 `module_uid,drug_panel,drn_file,drn_info_file`。
+**Input:** The step-4 `module_manifest.tsv` plus drug-response roots or an explicit index for PRISM, GDSC1, GDSC2, CTRP2, or other panels. The index must contain at least `module_uid,drug_panel,drn_file,drn_info_file`.
 
 ```r
 drug <- drug_response_analysis(
@@ -312,21 +312,21 @@ drug <- drug_response_analysis(
 drug_summary_file <- attr(drug, "summary_file")
 ```
 
-也可用 `drug_response_index_file` 代替多个根目录。索引至少包含：
+`drug_response_index_file` can be used instead of multiple root directories. The index must contain at least:
 
 ```text
 module_uid, drug_panel, drn_file, drn_info_file
 ```
 
-可选列为 `drug_level_file`、`prediction_file`。第 6 步必须覆盖 manifest 中的全部模块，而不是先按药物结果删模块。
+Optional columns are `drug_level_file` and `prediction_file`. Step 6 must cover all modules in the manifest rather than removing modules based on drug results beforehand.
 
-**输出**：`drug_response_summary.tsv`、`drug_response_hits.tsv`、`drug_response_source_index.tsv`、`drug_response_coverage.tsv` 和标准化逐模块 DRN/DRN-info。
+**Output:** `drug_response_summary.tsv`, `drug_response_hits.tsv`, `drug_response_source_index.tsv`, `drug_response_coverage.tsv`, and standardized per-module DRN/DRN-info files.
 
-### 第 6A 步：全部模块 Core34 特征
+### Step 6A: Core34 features for all modules
 
-**方法**：将 Core34 特征表与第 4 步 manifest 做一对一身份映射，固定特征顺序，检查全模块覆盖、数值有限性、缺失数和模块大小一致性，并记录来源哈希。
+**Method:** Map the Core34 feature table one-to-one to the step-4 manifest, fix the feature order, verify complete module coverage, finite numeric values, missing-value counts, and module-size consistency, and record source hashes.
 
-**输入**：第 4 步的 `module_manifest.tsv` 和全模块 Core34 表。特征表必须一行一个模块，包含 `module_uid`，或包含能够唯一构造身份的 network/method/subtype/module 列，以及 34 个数值特征。
+**Input:** The step-4 `module_manifest.tsv` and an all-module Core34 table. The feature table must contain one row per module and either `module_uid` or network/method/subtype/module columns that uniquely identify the module, together with 34 numeric features.
 
 ```r
 features <- prepare_module_features(
@@ -342,17 +342,17 @@ feature_file <- attr(features, "feature_file")
 feature_schema_file <- attr(features, "schema_file")
 ```
 
-输出固定特征顺序，并检查覆盖度、缺失值、有限值和模块大小一致性。
+The output uses a fixed feature order and reports coverage, missing values, finite-value checks, and module-size consistency.
 
-**输出**：`module_features.tsv`、`feature_schema.json` 和 `module_features_qc.tsv`。
+**Output:** `module_features.tsv`, `feature_schema.json`, and `module_features_qc.tsv`.
 
-### 第 6B 步：嵌套 OOF 评分和每亚型 Top10
+### Step 6B: nested OOF scoring and top 10 per subtype
 
-**方法**：在全部模块上运行重复嵌套分层交叉验证 Gradient Boosting，使用外层 OOF 概率避免训练内评分，并按模块真实亚型的目标概率生成亚型内排名；通过预测亚型匹配等 gate 后每亚型保留 Top10。也可以导入满足同一概率契约的外部模型结果。
+**Method:** Run repeated nested stratified cross-validation with Gradient Boosting across all modules. Outer-fold OOF probabilities avoid in-sample scoring, and the probability assigned to each module's true subtype determines its within-subtype rank. After gates such as predicted-subtype matching, retain the top 10 modules per subtype. External model results that satisfy the same probability contract can also be imported.
 
-**输入**：第 6A 步的 `module_features.tsv` 和 `feature_schema.json`；若导入已有模型结果，则概率表必须包含 `module_uid,prob_C1,prob_C2,prob_C3,prob_C4`。
+**Input:** The step-6A `module_features.tsv` and `feature_schema.json`. When importing existing model results, the probability table must contain `module_uid,prob_C1,prob_C2,prob_C3,prob_C4`.
 
-直接运行内置 Python 嵌套 OOF：
+Run the bundled Python nested-OOF implementation directly:
 
 ```r
 scores <- run_nested_ml_scoring(
@@ -369,7 +369,7 @@ scores <- run_nested_ml_scoring(
 ml_top_file <- attr(scores, "top_file")
 ```
 
-也可以导入已有概率表：
+Alternatively, import an existing probability table:
 
 ```r
 scores <- prepare_ml_scores(
@@ -381,15 +381,15 @@ scores <- prepare_ml_scores(
 )
 ```
 
-程序校验全模块覆盖、概率和、预测亚型、目标亚型概率和亚型内排名。
+The program validates complete module coverage, probability sums, predicted subtypes, target-subtype probabilities, and within-subtype ranks.
 
-**输出**：`ml_scores.tsv`、`ml_top10.tsv`、gate 审计、CV fold/模型元数据和 `fitted_model.joblib`（内置 Python 路径）。
+**Output:** `ml_scores.tsv`, `ml_top10.tsv`, gate-audit results, CV-fold/model metadata, and `fitted_model.joblib` when using the bundled Python implementation.
 
-### 第 6C 步：Top10 + 生存 + 药物响应 → 每亚型最优模块
+### Step 6C: Top10 + survival + drug response → optimal module per subtype
 
-**方法**：只在每亚型 ML Top10 内连接模块生存结果和第 6 步主药敏面板证据，依次执行预后方向、log-rank、模块大小和药物响应 gate，再按预设证据优先级排序。
+**Method:** Within the ML top 10 for each subtype, join module-survival results with evidence from the primary step-6 drug-sensitivity panel. Apply prognosis-direction, log-rank, module-size, and drug-response gates in sequence, then rank modules by the predefined evidence priority.
 
-**输入**：第 4 步的 `module_manifest.tsv`、第 6B 步的 `ml_top10.tsv`、模块生存表和第 6 步的 `drug_response_summary.tsv`。生存表至少包含 `module_uid,logrank_p,survival_direction`。
+**Input:** The step-4 `module_manifest.tsv`, the step-6B `ml_top10.tsv`, a module-survival table, and the step-6 `drug_response_summary.tsv`. The survival table must contain at least `module_uid,logrank_p,survival_direction`.
 
 ```r
 selected <- triage_modules(
@@ -408,17 +408,17 @@ selected <- triage_modules(
 selected_file <- attr(selected, "selected_file")
 ```
 
-默认筛选顺序为：ML 合格 Top10 → `High_score_worse` 且 log-rank P ≤ 0.05 → 模块大小 ≥ 30 → 有主药敏面板证据 → 按显著药物数、药物响应密度和目标亚型概率排序 → 每个亚型选择 1 个模块。
+The default filtering order is: eligible ML top 10 → `High_score_worse` with log-rank P ≤ 0.05 → module size ≥ 30 → evidence from the primary drug-sensitivity panel → ranking by significant-drug count, drug-response density, and target-subtype probability → one selected module per subtype.
 
-输出目录会复制入选模块的 node、edge、DRN 和 DRN-info 文件，因此第 7 步只依赖 `selected_modules.tsv` 及其相对路径，不再扫描全部模块目录。
+The output directory copies the node, edge, DRN, and DRN-info files for selected modules. Step 7 therefore depends only on `selected_modules.tsv` and its relative paths and no longer scans the complete module directory.
 
-**输出**：`module_survival.tsv`、`module_evidence.tsv`、`module_filtering_stepwise.tsv`、`selected_modules.tsv` 及入选模块的四类自包含交接文件。
+**Output:** `module_survival.tsv`, `module_evidence.tsv`, `module_filtering_stepwise.tsv`, `selected_modules.tsv`, and four self-contained handoff file types for the selected modules.
 
-### 第 7 步：仅为入选模块生成 sequence/SMILES
+### Step 7: generate sequences/SMILES for selected modules only
 
-**方法**：逐行读取 `selected_modules.tsv` 的 DRN-info，只提取实际出现的 protein/drug，然后与显式序列和 SMILES 查找表连接并检查覆盖度，不递归扫描其他模块。
+**Method:** Read DRN-info paths from `selected_modules.tsv` row by row, extract only proteins/drugs that actually occur, join them to explicit sequence and SMILES lookup tables, and check coverage without recursively scanning other modules.
 
-**输入**：第 6C 步的 `selected_modules.tsv`、蛋白序列表 `node,sequence` 和药物 SMILES 表 `node,smiles`。
+**Input:** The step-6C `selected_modules.tsv`, a protein-sequence table with `node,sequence`, and a drug-SMILES table with `node,smiles`.
 
 ```r
 seqs <- run_SEQCre(
@@ -431,15 +431,15 @@ seqs <- run_SEQCre(
 seq_manifest_file <- attr(seqs, "manifest_file")
 ```
 
-常见同义列会被标准化，但推荐使用上述四个列名。
+Common column aliases are normalized, but the four column names above are recommended.
 
-**输出**：`seq_smiles_manifest.tsv`，以及每个入选模块的 `protein_sequences.tsv` 和 `drug_smiles.tsv`。
+**Output:** `seq_smiles_manifest.tsv` plus `protein_sequences.tsv` and `drug_smiles.tsv` for each selected module.
 
-### 第 8 步：仅为入选模块计算结合分数
+### Step 8: calculate binding scores for selected modules only
 
-**方法**：从入选 DRN 构造 drug-target pair，连接第 7 步的 target sequence 和 drug SMILES，再导入已有结合分数或调用用户预测函数；根据 `lower_better/higher_better` 生成模块内排名。
+**Method:** Construct drug-target pairs from selected DRNs, join step-7 target sequences and drug SMILES, and then import existing binding scores or call a user-supplied prediction function. Generate within-module ranks according to `lower_better` or `higher_better`.
 
-**输入**：第 6C 步的 `selected_modules.tsv`、第 7 步的 `seq_smiles_manifest.tsv`，以及结合分数表或用户预测函数。结合分数表包含 `module_uid,target_name,drug_name,binding_score`。
+**Input:** The step-6C `selected_modules.tsv`, the step-7 `seq_smiles_manifest.tsv`, and either a binding-score table or a user-supplied predictor. The binding-score table contains `module_uid,target_name,drug_name,binding_score`.
 
 ```r
 binding <- predict_BA(
@@ -453,15 +453,15 @@ binding <- predict_BA(
 binding_file <- attr(binding, "scores_file")
 ```
 
-也可通过 `predictor` 传入用户自己的预测函数；文件和函数必须二选一。
+A custom prediction function can be passed through `predictor`; exactly one of the file or function inputs must be supplied.
 
-**输出**：`binding_scores.tsv`、`binding_score_manifest.tsv` 和逐模块 DPI/结合分数文件。
+**Output:** `binding_scores.tsv`, `binding_score_manifest.tsv`, and per-module DPI/binding-score files.
 
-### 第 9 步：PRS/扰动评分和最终候选
+### Step 9: PRS/perturbation scoring and final candidates
 
-**方法**：从入选模块边文件导入或计算 target sensitivity，与第 8 步结合分数一对一连接，计算 perturbation score，并分别生成模块内和亚型内排名。
+**Method:** Import or calculate target sensitivity from selected-module edge files, join it one-to-one with step-8 binding scores, calculate perturbation scores, and generate both within-module and within-subtype ranks.
 
-**输入**：第 6C 步的 `selected_modules.tsv`、第 8 步的 `binding_scores.tsv`，以及敏感性表或 ENM/PRS 函数。敏感性表包含 `module_uid,target_name,sensitivity`。
+**Input:** The step-6C `selected_modules.tsv`, the step-8 `binding_scores.tsv`, and either a sensitivity table or an ENM/PRS function. The sensitivity table contains `module_uid,target_name,sensitivity`.
 
 ```r
 prs <- process_prs_dti(
@@ -473,17 +473,17 @@ prs <- process_prs_dti(
 )
 ```
 
-也可传入 `sensitivity_function`。扰动分数沿用 subnetDR 的定义：
+Alternatively, pass a `sensitivity_function`. The perturbation score follows the subnetDR definition:
 
 ```text
 perturbation_score = binding_score × sensitivity
 ```
 
-**输出**：`target_sensitivity.tsv`、`perturbation_scores.tsv` 和每亚型前 `top_n` 的 `final_candidates.tsv`。
+**Output:** `target_sensitivity.tsv`, `perturbation_scores.tsv`, and `final_candidates.tsv` containing the top `top_n` candidates for each subtype.
 
-## 一次贯穿第 1–9 步
+## Run steps 1–9 in one call
 
-先在 `config/paper_luad.yml` 中设置原始输入和各阶段输出路径。完整运行至少需要配置：
+First set the raw-input and stage-output paths in `config/paper_luad.yml`. A complete run requires at least:
 
 ```text
 paths.expression_file
@@ -491,14 +491,14 @@ paths.subtype_file
 paths.ppi_index_file
 paths.module_feature_input_file
 paths.survival_input_file
-drug_response.input_roots 或 paths.drug_response_input_index_file
+drug_response.input_roots or paths.drug_response_input_index_file
 paths.protein_sequence_file
 paths.drug_smiles_file
 paths.binding_score_input_file
 paths.sensitivity_input_file
 ```
 
-`paths.ml_score_input_file` 可选：为空时运行内置嵌套 OOF；提供时导入已有全模块概率。配置完成后只需要一个入口：
+`paths.ml_score_input_file` is optional: when empty, the bundled nested-OOF implementation runs; when provided, an existing all-module probability table is imported. After configuration, the complete pipeline uses a single entry point:
 
 ```r
 library(MLSnpDR)
@@ -518,7 +518,7 @@ result <- run_ML_SnpDR(
 )
 ```
 
-`from="deps"` 是默认值，因此正式运行也可简写为：
+Because `from="deps"` is the default, a complete production run can be shortened to:
 
 ```r
 result <- run_ML_SnpDR(
@@ -527,7 +527,7 @@ result <- run_ML_SnpDR(
 )
 ```
 
-总运行器按阶段注册表顺序执行，并把实际返回的主输出路径直接传给依赖它的下一步。也可只运行连续子区间，例如：
+The top-level runner follows the stage registry and passes each returned primary-output path directly to the dependent downstream stage. A contiguous subset can also be run, for example:
 
 ```r
 run_ML_SnpDR(
@@ -538,22 +538,22 @@ run_ML_SnpDR(
 )
 ```
 
-若从中间步骤开始，配置中必须提供前置步骤产生的输入文件。配置字段和所有列定义见 [输入输出契约](docs/io-contracts.md)，设计边界见 [流程架构](docs/architecture.md)。
+When starting from an intermediate stage, the configuration must provide the input files produced by preceding stages. See the [input/output contracts](docs/io-contracts.md) for configuration fields and column definitions, and the [pipeline architecture](docs/architecture.md) for design boundaries.
 
-## 当前 LUAD 数据验证
+## Validation on the current LUAD data
 
-代码已在当前项目数据上完成只读或独立验证目录测试：
+The code has been tested against the current project data using read-only inputs or isolated validation directories:
 
-- 第 1–3 步：合成表达/PPI 数据完成 DEPs → network manifest → Louvain/WF → ModuleSelection 的连续测试；
-- 第 4 步：208 个模块，C1/C2/C3/C4 分别为 63/44/49/52；14,261 条节点记录、95,889 条边，排除 854 个自环。
-- 第 6 步：208 模块 × 4 面板 = 832 个模块-面板组合，PRISM/GDSC1/GDSC2/CTRP2 均完整覆盖。
-- 第 6A 步：208 个模块 × 34 个特征，缺失模块 0，QC 通过 208。
-- 第 6B 步：208 个模块全部评分，每亚型 10 个，共 40 个 ML Top10 模块。
-- 第 6C 步：每亚型选择 1 个模块，并确认 4 类交接文件均存在。
+- Steps 1–3: a continuous DEPs → network manifest → Louvain/WF → ModuleSelection test using synthetic expression/PPI data.
+- Step 4: 208 modules, with 63/44/49/52 modules for C1/C2/C3/C4, respectively; 14,261 node records and 95,889 edges after excluding 854 self-loops.
+- Step 6: 208 modules × 4 panels = 832 module-panel combinations, with complete coverage for PRISM/GDSC1/GDSC2/CTRP2.
+- Step 6A: 208 modules × 34 features, zero missing modules, and 208 modules passing QC.
+- Step 6B: all 208 modules scored, with 10 per subtype and 40 ML top-10 modules in total.
+- Step 6C: one module selected per subtype, with all four handoff file types confirmed.
 
-这部分结果用于验证代码连接和数据契约，不替代最终论文运行时的固定环境、参数记录和统计复核。
+These results validate code integration and data contracts. They do not replace a fixed computational environment, complete parameter records, or statistical review for the final manuscript analysis.
 
-## 测试
+## Testing
 
 ```bash
 Rscript -e "devtools::test()"
@@ -561,10 +561,10 @@ python -m pytest
 R CMD check .
 ```
 
-## 与 subnetDR 的关系
+## Relationship to subnetDR
 
-本仓库沿用 subnetDR 的科学工作流和第 7–9 步命名，但移除了这些步骤对全部目录的递归扫描，并把输入范围锁定到 `selected_modules.tsv`。建议同时引用原始 subnetDR 仓库及相应论文/方法来源。
+This repository follows the scientific workflow and step 7–9 naming of subnetDR, while removing recursive scans of complete result directories and restricting these stages to the modules listed in `selected_modules.tsv`. Please cite the original subnetDR repository and the corresponding publications/method sources alongside ML-SnpDR.
 
 ## License
 
-MIT。上游 subnetDR 代码和相关方法的署名与版权归其原作者所有。
+MIT. Attribution and copyright for upstream subnetDR code and related methods remain with their original authors.
