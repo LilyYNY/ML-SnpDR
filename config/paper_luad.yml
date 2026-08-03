@@ -1,0 +1,49 @@
+project:
+  name: ML-SnpDR-LUAD
+  seed: 20260513
+  target_subtypes: [C3]
+  mode: paper_reproduction
+
+paths:
+  input_root: data/raw
+  results_root: results/paper_luad
+  cache_root: cache/paper_luad
+
+module_prefilter:
+  min_size_exclusive: 9
+
+ml:
+  feature_set: core34_v1
+  ranking_score: nested_oof_target_subtype_probability
+  top_k_per_subtype: 10
+  require_predicted_subtype_match: true
+  probability_min: null
+  margin_min: null
+
+survival:
+  score_method: raw_mean_expression
+  endpoint: OS
+  cutpoint_method: surv_cutpoint
+  min_group_fraction: 0.10
+  required_direction: High_score_worse
+  logrank_p_max: 0.05
+  logrank_fdr_max: null
+  report_continuous_cox: true
+
+candidate_selection:
+  min_module_size: 30
+  primary_drug_panel: PRISM
+  sort_by: [drug_number_desc, drug_response_density_desc, target_probability_desc]
+  select_n_per_subtype: 1
+
+drug_response:
+  panels: [PRISM, GDSC1, GDSC2, CTRP2]
+  analysis_scope: all_prefiltered
+  significance_metric: wilcoxon_p
+  significance_cutoff: 0.05
+  p_adjust_method: none
+
+post_selection:
+  run_original_steps: [7, 8, 9]
+  selected_only: true
+

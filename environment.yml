@@ -1,0 +1,19 @@
+name: mlsnpdr
+channels:
+  - conda-forge
+dependencies:
+  - python=3.9
+  - r-base>=4.2
+  - r-yaml
+  - r-testthat
+  - numpy>=1.24,<2.0
+  - pandas>=2.0
+  - scipy>=1.10
+  - scikit-learn>=1.3,<1.6
+  - joblib>=1.3
+  - pyyaml>=6.0
+  - pytest>=7.4
+  - pip
+  - pip:
+      - -e .
+

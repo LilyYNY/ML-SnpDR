@@ -1,0 +1,15 @@
+^\.git$
+^\.github$
+^\.Rproj\.user$
+^docs$
+^config$
+^data-raw$
+^models$
+^schemas$
+^environment\.yml$
+^pyproject\.toml$
+^.*\.Rproj$
+^\.install_check_lib$
+^\.Rcheck$
+^\.\.Rcheck$
+^LICENSE\.md$

@@ -1,0 +1,9 @@
+ML-SnpDR is derived in part from subnetDR:
+https://github.com/LilyYNY/subnetDR
+
+The upstream subnetDR project is licensed under the MIT License and carries
+Copyright (c) 2025 LilyYNY.
+
+Files migrated from subnetDR will retain their upstream attribution. Modified
+files must document material ML-SnpDR changes in their file header or history.
+

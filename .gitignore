@@ -1,0 +1,38 @@
+# R
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
+*.Rcheck/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+*.egg-info/
+
+# IDE / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Pipeline outputs and caches
+results/
+cache/
+logs/
+data/raw/
+data/processed/
+models/*.joblib
+models/*.pkl
+!models/README.md
+
+# API and model caches
+bio_cache.db
+*.sqlite
+*.sqlite3
+

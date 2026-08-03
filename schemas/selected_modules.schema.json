@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/LilyYNY/ML-SnpDR/schemas/selected_modules.schema.json",
+  "title": "ML-SnpDR selected module row",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "module_uid", "network", "method", "subtype", "module", "module_size",
+    "primary_drug_panel", "drn_file", "drn_info_file", "node_file",
+    "edge_file", "selection_rank", "selection_reason"
+  ],
+  "properties": {
+    "module_uid": {"type": "string", "pattern": "^(string|physicalppin|chengf)__(louvain|wf)__C[1-4]__M[0-9]+$"},
+    "selection_rank": {"type": "integer", "minimum": 1},
+    "selection_reason": {"type": "string", "minLength": 1}
+  }
+}
+

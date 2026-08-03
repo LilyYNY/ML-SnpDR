@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/LilyYNY/ML-SnpDR/schemas/module_manifest.schema.json",
+  "title": "ML-SnpDR module manifest row",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "module_uid", "legacy_module_id", "network", "method", "subtype",
+    "module", "module_size", "node_file", "edge_file", "prefilter_pass"
+  ],
+  "properties": {
+    "module_uid": {"type": "string", "pattern": "^(string|physicalppin|chengf)__(louvain|wf)__C[1-4]__M[0-9]+$"},
+    "legacy_module_id": {"type": "string"},
+    "network": {"enum": ["String", "physicalPPIN", "chengF"]},
+    "method": {"enum": ["Louvain", "WF"]},
+    "subtype": {"enum": ["C1", "C2", "C3", "C4"]},
+    "module": {"type": "string", "pattern": "^M[0-9]+$"},
+    "module_size": {"type": "integer", "minimum": 1},
+    "node_file": {"type": "string", "minLength": 1},
+    "edge_file": {"type": "string", "minLength": 1},
+    "prefilter_pass": {"type": "boolean"},
+    "prefilter_reason": {"type": "string"},
+    "node_sha256": {"type": ["string", "null"]},
+    "edge_sha256": {"type": ["string", "null"]}
+  }
+}
+

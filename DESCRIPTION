@@ -1,0 +1,27 @@
+Package: MLSnpDR
+Title: Machine-Learning-Guided Subtype-Specific Network Drug Repurposing
+Version: 0.0.1
+Authors@R: c(
+    person(given = "LilyYNY", role = c("aut", "cre"),
+           email = "suda_sysbio@hotmail.com"),
+    person(given = "Soochow", family = "University", role = "cph",
+           comment = "Copyright holder of the upstream subnetDR project")
+  )
+Author: LilyYNY [aut, cre], Soochow University [cph]
+Maintainer: LilyYNY <suda_sysbio@hotmail.com>
+Description: Builds subtype-specific protein interaction network modules,
+    scores their subtype representativeness with machine learning, integrates
+    survival and drug-response evidence, and restricts sequence, binding, and
+    perturbation-response analyses to selected modules.
+License: MIT + file LICENSE
+URL: https://github.com/LilyYNY/ML-SnpDR
+BugReports: https://github.com/LilyYNY/ML-SnpDR/issues
+Encoding: UTF-8
+Depends: R (>= 4.2.0)
+Imports:
+    yaml
+Suggests:
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
