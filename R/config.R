@@ -21,7 +21,8 @@
 #' @export
 validate_mlsnpdr_config <- function(config) {
   required <- c(
-    "project", "paths", "pipeline", "module_prefilter", "annotation", "ml", "survival",
+    "project", "paths", "pipeline", "differential_expression", "network_construction",
+    "module_division", "module_prefilter", "annotation", "ml", "survival",
     "candidate_selection", "drug_response", "post_selection"
   )
   missing <- setdiff(required, names(config))
@@ -50,6 +51,50 @@ validate_mlsnpdr_config <- function(config) {
       length(config$pipeline$write_module_plots) != 1L ||
       is.na(config$pipeline$write_module_plots)) {
     stop("pipeline.write_module_plots must be true or false.", call. = FALSE)
+  }
+
+  dep_probabilities <- c(
+    detection_threshold = config$differential_expression$detection_threshold,
+    p_adjust_threshold = config$differential_expression$p_adjust_threshold
+  )
+  if (any(!is.finite(dep_probabilities)) || any(dep_probabilities < 0) ||
+      any(dep_probabilities > 1)) {
+    stop("Differential-expression probability thresholds must be between 0 and 1.", call. = FALSE)
+  }
+  dep_fc <- config$differential_expression$fc_threshold
+  if (length(dep_fc) != 1L || !is.finite(dep_fc) || dep_fc <= 1) {
+    stop("differential_expression.fc_threshold must be greater than 1.", call. = FALSE)
+  }
+  if (!config$differential_expression$p_adjust_method %in% stats::p.adjust.methods) {
+    stop("differential_expression.p_adjust_method is unsupported.", call. = FALSE)
+  }
+  dep_pseudocount <- config$differential_expression$pseudocount
+  if (length(dep_pseudocount) != 1L || !is.finite(dep_pseudocount) || dep_pseudocount < 0) {
+    stop("differential_expression.pseudocount must be non-negative.", call. = FALSE)
+  }
+  if (!is.logical(config$differential_expression$write_legacy_excel) ||
+      length(config$differential_expression$write_legacy_excel) != 1L ||
+      is.na(config$differential_expression$write_legacy_excel)) {
+    stop("differential_expression.write_legacy_excel must be true or false.", call. = FALSE)
+  }
+  labels <- tolower(gsub("-", "_", trimws(as.character(config$network_construction$include_labels))))
+  if (!length(labels) || any(!nzchar(labels))) {
+    stop("network_construction.include_labels must contain at least one label.", call. = FALSE)
+  }
+  config$network_construction$include_labels <- unique(labels)
+  ppi_score <- config$network_construction$ppi_score_threshold
+  if (length(ppi_score) != 1L || !is.finite(ppi_score)) {
+    stop("network_construction.ppi_score_threshold must be finite.", call. = FALSE)
+  }
+  division_seed <- config$module_division$seed
+  if (length(division_seed) != 1L || !is.finite(division_seed) ||
+      division_seed != floor(division_seed)) {
+    stop("module_division.seed must be an integer.", call. = FALSE)
+  }
+  config$module_division$seed <- as.integer(division_seed)
+  wf_cutoff <- config$module_division$wf_pvalue_cutoff
+  if (length(wf_cutoff) != 1L || !is.finite(wf_cutoff) || wf_cutoff <= 0 || wf_cutoff > 1) {
+    stop("module_division.wf_pvalue_cutoff must be in (0, 1].", call. = FALSE)
   }
 
   cutoff <- config$module_prefilter$min_size_exclusive

@@ -2,12 +2,12 @@
 % Please edit documentation in R/run_ML_SnpDR.R
 \name{run_ML_SnpDR}
 \alias{run_ML_SnpDR}
-\title{Run the complete ML-SnpDR downstream chain}
+\title{Run the complete ML-SnpDR step-1-through-step-9 chain}
 \usage{
 run_ML_SnpDR(
   config,
   defaults = NULL,
-  from = "module_selection",
+  from = "deps",
   to = "perturbation_score",
   dry_run = FALSE
 )
@@ -17,7 +17,7 @@ run_ML_SnpDR(
 
 \item{defaults}{Optional defaults YAML merged before \code{config}.}
 
-\item{from}{First stage name; defaults to \code{module_selection}.}
+\item{from}{First stage name; defaults to \code{deps} (step 1).}
 
 \item{to}{Last stage name; defaults to \code{perturbation_score}.}
 
@@ -29,8 +29,8 @@ The result of \code{\link[=run_ml_snpdr_pipeline]{run_ml_snpdr_pipeline()}}.
 }
 \description{
 This convenience runner mirrors subnetDR's \code{run_subnetDR.R} while exposing
-explicit start/end stages. The default chain starts from ModuleDivision
-outputs at step 4, runs annotation and all-module drug response/features,
-creates ML Top-K and one best module per subtype, then runs steps 7-9 only
-for those selected modules.
+explicit start/end stages. The default chain starts from the expression
+matrix and subtype phenotype, builds subtype PPI networks and modules, runs
+annotation and all-module drug response/features, creates ML Top-K and one
+best module per subtype, then runs steps 7-9 only for selected modules.
 }

@@ -34,8 +34,8 @@ mlsnpdr_stage_registry <- function() {
     ),
     primary_input = c(
       "expression + subtype phenotype",
-      "differential_expression_results",
-      "subtype PPI networks",
+      "differential_expression.tsv",
+      "network_manifest.tsv",
       "ModuleDivision node/edge tables",
       "module_manifest.tsv",
       "module_manifest.tsv + expression + drug training panels",
@@ -47,7 +47,7 @@ mlsnpdr_stage_registry <- function() {
       "binding_scores.tsv + selected module edges"
     ),
     primary_output = c(
-      "differential_expression_results",
+      "differential_expression.tsv",
       "network_manifest.tsv",
       "module_division_manifest.tsv",
       "module_manifest.tsv",
@@ -60,7 +60,7 @@ mlsnpdr_stage_registry <- function() {
       "binding_scores.tsv",
       "perturbation_scores.tsv + final_candidates.tsv"
     ),
-    implemented = c(FALSE, FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE),
+    implemented = rep(TRUE, 12L),
     stringsAsFactors = FALSE
   )
 }

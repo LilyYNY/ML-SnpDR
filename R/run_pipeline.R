@@ -33,6 +33,80 @@ run_ml_snpdr_pipeline <- function(config, defaults = NULL, stages = NULL, dry_ru
   }
 
   outputs <- list()
+  if ("deps" %in% plan$name) {
+    expression_file <- parsed$paths$expression_file %||% NULL
+    phenotype_file <- parsed$paths$subtype_file %||% NULL
+    output_dir <- parsed$paths$differential_expression_dir %||% NULL
+    required <- list(
+      expression_file = expression_file,
+      subtype_file = phenotype_file,
+      differential_expression_dir = output_dir
+    )
+    missing <- names(required)[!vapply(required, function(x) {
+      !is.null(x) && length(x) == 1L && !is.na(x) && nzchar(x)
+    }, logical(1))]
+    if (length(missing)) {
+      stop("Missing step-1 path setting(s): ", paste(missing, collapse = ", "), call. = FALSE)
+    }
+    outputs$deps <- run_diff_expr_analysis(
+      expression_file = expression_file,
+      phenotype_file = phenotype_file,
+      output_dir = output_dir,
+      gene_column = parsed$differential_expression$gene_column %||% NULL,
+      sample_column = parsed$differential_expression$sample_column,
+      subtype_column = parsed$differential_expression$subtype_column,
+      detection_threshold = parsed$differential_expression$detection_threshold,
+      fc_threshold = parsed$differential_expression$fc_threshold,
+      p_threshold = parsed$differential_expression$p_adjust_threshold,
+      p_adjust_method = parsed$differential_expression$p_adjust_method,
+      pseudocount = parsed$differential_expression$pseudocount,
+      subtypes = parsed$project$target_subtypes,
+      write_legacy_excel = parsed$differential_expression$write_legacy_excel,
+      strict = parsed$pipeline$strict_inputs
+    )
+  }
+
+  if ("network_construction" %in% plan$name) {
+    diff_file <- if (!is.null(outputs$deps)) {
+      attr(outputs$deps, "result_file")
+    } else {
+      file.path(parsed$paths$differential_expression_dir, "differential_expression.tsv")
+    }
+    ppi_index_file <- parsed$paths$ppi_index_file %||% NULL
+    if (is.null(ppi_index_file) || length(ppi_index_file) != 1L ||
+        is.na(ppi_index_file) || !nzchar(ppi_index_file)) {
+      stop("Configure paths.ppi_index_file before running network_construction.", call. = FALSE)
+    }
+    outputs$network_construction <- run_network_construction(
+      diff_file = diff_file,
+      ppi_index_file = ppi_index_file,
+      output_dir = parsed$paths$network_construction_dir,
+      ppi_method = parsed$pipeline$network_methods,
+      ppiScore = parsed$network_construction$ppi_score_threshold,
+      include_labels = parsed$network_construction$include_labels,
+      subtypes = parsed$project$target_subtypes,
+      strict = parsed$pipeline$strict_inputs
+    )
+  }
+
+  if ("module_division" %in% plan$name) {
+    network_manifest_file <- if (!is.null(outputs$network_construction)) {
+      attr(outputs$network_construction, "manifest_file")
+    } else {
+      file.path(parsed$paths$network_construction_dir, "network_manifest.tsv")
+    }
+    outputs$module_division <- module_division(
+      output_base_path = parsed$paths$module_division_dir,
+      network_method = parsed$pipeline$network_methods,
+      module_method = parsed$pipeline$module_methods,
+      network_manifest_file = network_manifest_file,
+      subtypes = parsed$project$target_subtypes,
+      seed = parsed$module_division$seed,
+      wf_pvalue_cutoff = parsed$module_division$wf_pvalue_cutoff,
+      strict = parsed$pipeline$strict_inputs
+    )
+  }
+
   if ("module_selection" %in% plan$name) {
     required_paths <- c("module_division_dir", "module_selection_dir")
     missing_paths <- required_paths[
@@ -48,9 +122,14 @@ run_ml_snpdr_pipeline <- function(config, defaults = NULL, stages = NULL, dry_ru
         call. = FALSE
       )
     }
+    module_division_dir <- if (!is.null(outputs$module_division)) {
+      attr(outputs$module_division, "output_dir")
+    } else {
+      parsed$paths$module_division_dir
+    }
     outputs$module_selection <- module_selection(
       subtype_file = NULL,
-      base_input_path = parsed$paths$module_division_dir,
+      base_input_path = module_division_dir,
       base_output_path = parsed$paths$module_selection_dir,
       network_method = parsed$pipeline$network_methods,
       module_method = parsed$pipeline$module_methods,

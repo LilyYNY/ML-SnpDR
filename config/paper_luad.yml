@@ -8,7 +8,9 @@ paths:
   input_root: data/raw
   results_root: results/paper_luad
   cache_root: cache/paper_luad
+  expression_file: data/raw/expression.xlsx
   subtype_file: data/raw/subtype.xlsx
+  ppi_index_file: data/raw/ppi_index.tsv
   annotation_gene_set_file: null
   annotation_background_gene_file: null
   drug_response_input_index_file: null
@@ -19,6 +21,8 @@ paths:
   drug_smiles_file: null
   binding_score_input_file: null
   sensitivity_input_file: null
+  differential_expression_dir: results/paper_luad/01_differential_expression
+  network_construction_dir: results/paper_luad/02_network_construction
   module_division_dir: results/paper_luad/03_module_division
   module_selection_dir: results/paper_luad/04_module_selection
   module_annotation_dir: results/paper_luad/05_module_annotation
@@ -35,6 +39,25 @@ pipeline:
   module_methods: [Louvain, WF]
   strict_inputs: true
   write_module_plots: false
+
+differential_expression:
+  gene_column: null
+  sample_column: Sample
+  subtype_column: Subtype
+  detection_threshold: 0.80
+  fc_threshold: 2
+  p_adjust_method: BH
+  p_adjust_threshold: 0.01
+  pseudocount: 1
+  write_legacy_excel: true
+
+network_construction:
+  include_labels: [up]
+  ppi_score_threshold: 400
+
+module_division:
+  seed: 123
+  wf_pvalue_cutoff: 0.05
 
 module_prefilter:
   min_size_exclusive: 9

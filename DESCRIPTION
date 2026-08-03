@@ -20,6 +20,7 @@ Encoding: UTF-8
 Depends: R (>= 4.2.0)
 Imports:
     digest,
+    igraph,
     jsonlite,
     yaml
 Suggests:

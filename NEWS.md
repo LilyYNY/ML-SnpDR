@@ -20,4 +20,7 @@
   trace and one self-contained selected module per subtype.
 - Reworked subnetDR steps 7-9 to read only `selected_modules.tsv`, with explicit
   sequence/SMILES, binding-score, sensitivity, and final-candidate contracts.
-- Added `run_ML_SnpDR()` as the continuous step-4-through-step-9 entry point.
+- Added explicit step-1 differential-expression outputs, step-2 PPI source
+  indexing/network manifests and step-3 Louvain/WF module-division manifests.
+- Extended `run_ML_SnpDR()` to execute the continuous step-1-through-step-9
+  workflow by default while retaining configurable intermediate start/end stages.

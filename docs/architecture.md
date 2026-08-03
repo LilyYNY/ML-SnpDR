@@ -15,7 +15,12 @@ ML-SnpDR 不是一条与 subnetDR 平行的新流程，而是在原第 6 步和�
 
 ```mermaid
 flowchart TD
-    A["subnetDR 01–03 或已有 ModuleDivision"] --> B["04 module_selection"]
+    X["expression + subtype phenotype"] --> A["01 run_diff_expr_analysis"]
+    A --> DE["differential_expression.tsv"]
+    DE --> NC["02 run_network_construction"]
+    NC --> NM["network_manifest.tsv"]
+    NM --> MD["03 module_division"]
+    MD --> B["04 module_selection"]
     B --> M["module_manifest.tsv"]
     M --> C["05 functional_annotation"]
     M --> D["06 drug_response_analysis"]
@@ -37,9 +42,9 @@ flowchart TD
 
 | 编号 | 实现 | 范围 | 主输出 |
 |---|---|---|---|
-| 01 | 外部/subnetDR | 队列 | 差异表达结果 |
-| 02 | 外部/subnetDR | 亚型 | 网络结果 |
-| 03 | 外部/subnetDR | 亚型×网络×算法 | ModuleDivision 文件 |
+| 01 | `run_diff_expr_analysis()` | 队列；亚型 vs 其余样本 | `differential_expression.tsv` |
+| 02 | `run_network_construction()` | 亚型×网络 | `network_manifest.tsv`、PPI 边表 |
+| 03 | `module_division()` / `subtype_module()` | 亚型×网络×算法 | `module_division_manifest.tsv` |
 | 04 | `module_selection()` | 全部大小预筛模块 | `module_manifest.tsv` |
 | 05 | `functional_annotation()` | manifest 全部模块 | `module_annotation.tsv` |
 | 06 | `drug_response_analysis()` | manifest 全部模块×面板 | `drug_response_summary.tsv`、DRN |
@@ -53,6 +58,8 @@ flowchart TD
 实际顺序由 `mlsnpdr_stage_registry()` 返回。`run_ML_SnpDR()` 选择注册表中的连续区间，`run_ml_snpdr_pipeline()` 负责读取配置和传递实际输出路径。
 
 ## 4. 两个数据边界
+
+第 1–4 步还建立三个连续的上游契约：`differential_expression.tsv` 固定亚型差异蛋白语义；`network_manifest.tsv` 固定亚型 PPI 文件身份；`module_division_manifest.tsv` 固定每个亚型-网络-算法组合及其节点/边模块文件。总运行器传递实际返回路径，不重新扫描或猜测上游结果。
 
 ### 4.1 全模块边界
 
@@ -121,6 +128,6 @@ flowchart TD
 - 输出目录通过临时目录完成后原子重命名；已存在的目标目录不会被静默覆盖。
 - Core34 来源、manifest 和概率表记录 SHA256 或来源路径。
 - Python 模型保存 fold 结果、元数据和 `fitted_model.joblib`。
-- 第 1–3 步当前标记为未在本包实现，完整运行默认从 `module_selection` 开始。
+- 第 1–3 步与第 4–9 步均在本包实现，完整运行默认从 `deps` 开始。
 
 所有输入输出列定义见 [io-contracts.md](io-contracts.md)。
