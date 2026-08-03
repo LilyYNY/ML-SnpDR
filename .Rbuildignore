@@ -7,6 +7,9 @@
 ^data-raw$
 ^models$
 ^schemas$
+^results$
+^cache$
+^logs$
 ^environment\.yml$
 ^pyproject\.toml$
 ^.*\.Rproj$

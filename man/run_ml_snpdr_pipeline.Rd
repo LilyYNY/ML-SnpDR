@@ -2,7 +2,7 @@
 % Please edit documentation in R/run_pipeline.R
 \name{run_ml_snpdr_pipeline}
 \alias{run_ml_snpdr_pipeline}
-\title{Plan or run the ML-SnpDR pipeline}
+\title{Plan or run the ML-SnpDR chained pipeline}
 \usage{
 run_ml_snpdr_pipeline(config, defaults = NULL, stages = NULL, dry_run = TRUE)
 }
@@ -11,13 +11,15 @@ run_ml_snpdr_pipeline(config, defaults = NULL, stages = NULL, dry_run = TRUE)
 
 \item{defaults}{Optional defaults YAML file.}
 
-\item{stages}{Optional stage names to show or run.}
+\item{stages}{Optional stage names to show or run. ML-SnpDR keeps subnetDR
+steps 1-9 and inserts \code{module_features}, \code{ml_scoring} and \code{module_triage}
+between the original steps 6 and 7.}
 
 \item{dry_run}{When \code{TRUE}, validate configuration and return the stage plan.}
 }
 \value{
-A list containing configuration, plan and status for a dry run.
+A list containing configuration, plan, status and stage outputs.
 }
 \description{
-Plan or run the ML-SnpDR pipeline
+Plan or run the ML-SnpDR chained pipeline
 }

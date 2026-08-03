@@ -19,8 +19,12 @@ BugReports: https://github.com/LilyYNY/ML-SnpDR/issues
 Encoding: UTF-8
 Depends: R (>= 4.2.0)
 Imports:
+    digest,
+    jsonlite,
     yaml
 Suggests:
+    msigdbr,
+    openxlsx,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Roxygen: list(markdown = TRUE)

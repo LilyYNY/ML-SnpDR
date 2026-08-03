@@ -1,28 +1,66 @@
 #' Return the ML-SnpDR stage registry
 #'
-#' @return A data frame describing the planned execution order and boundaries.
+#' ML-SnpDR preserves subnetDR steps 1-9 and inserts the machine-learning
+#' selection chain between the original steps 6 and 7. Every primary output is
+#' the default primary input of the next dependent step.
+#'
+#' @return A data frame describing execution order, analysis scope, primary
+#'   input/output contracts and implementation status.
 #' @export
 mlsnpdr_stage_registry <- function() {
   data.frame(
-    stage = sprintf("%02d", 1:15),
+    stage = c("01", "02", "03", "04", "05", "06", "06A", "06B", "06C", "07", "08", "09"),
     name = c(
-      "diff_expression", "network_construction", "module_detection",
-      "module_prefilter", "module_manifest", "module_annotation",
-      "module_features", "ml_scoring", "ml_topk_pool",
-      "survival_and_drug_response", "candidate_selection",
-      "sequence_smiles", "binding_affinity", "perturbation_score",
-      "candidate_integration"
+      "deps",
+      "network_construction",
+      "module_division",
+      "module_selection",
+      "module_annotation",
+      "drug_response",
+      "module_features",
+      "ml_scoring",
+      "module_triage",
+      "sequence_smiles",
+      "binding_score",
+      "perturbation_score"
     ),
     scope = c(
-      rep("cohort", 3), rep("all_prefiltered_modules", 5),
-      "ml_ranked_modules", "configured_scope", "evidence_join",
-      rep("selected_modules_only", 4)
+      "cohort",
+      "subtype",
+      "subtype_network_method",
+      rep("all_selected_by_size_modules", 5),
+      "ml_top10_per_subtype",
+      rep("one_best_module_per_subtype", 3)
     ),
-    implemented = c(
-      rep(FALSE, 4), TRUE, FALSE, FALSE, FALSE, FALSE, FALSE,
-      FALSE, FALSE, FALSE, FALSE, FALSE
+    primary_input = c(
+      "expression + subtype phenotype",
+      "differential_expression_results",
+      "subtype PPI networks",
+      "ModuleDivision node/edge tables",
+      "module_manifest.tsv",
+      "module_manifest.tsv + expression + drug training panels",
+      "module_manifest.tsv + omics/network feature sources",
+      "module_features.tsv + subtype labels/model",
+      "ml_top10.tsv + survival + drug_response_summary.tsv",
+      "selected_modules.tsv + selected DRN files",
+      "seq_smiles_manifest.tsv + selected DRN files",
+      "binding_scores.tsv + selected module edges"
     ),
+    primary_output = c(
+      "differential_expression_results",
+      "network_manifest.tsv",
+      "module_division_manifest.tsv",
+      "module_manifest.tsv",
+      "module_annotation.tsv",
+      "drug_response_summary.tsv + per-module DRN files",
+      "module_features.tsv",
+      "ml_scores.tsv + ml_top10.tsv",
+      "module_evidence.tsv + selected_modules.tsv",
+      "seq_smiles_manifest.tsv",
+      "binding_scores.tsv",
+      "perturbation_scores.tsv + final_candidates.tsv"
+    ),
+    implemented = c(FALSE, FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE),
     stringsAsFactors = FALSE
   )
 }
-

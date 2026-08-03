@@ -4,6 +4,9 @@ channels:
 dependencies:
   - python=3.9
   - r-base>=4.2
+  - r-digest
+  - r-jsonlite
+  - r-openxlsx
   - r-yaml
   - r-testthat
   - numpy>=1.24,<2.0
@@ -16,4 +19,3 @@ dependencies:
   - pip
   - pip:
       - -e .
-

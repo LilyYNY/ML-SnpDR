@@ -18,6 +18,9 @@ dependencies = [
   "scipy>=1.10"
 ]
 
+[project.scripts]
+mlsnpdr-score = "mlsnpdr.scoring:main"
+
 [project.optional-dependencies]
 dev = ["pytest>=7.4", "ruff>=0.5"]
 drug = ["requests>=2.31"]
@@ -35,4 +38,3 @@ addopts = "-q"
 [tool.ruff]
 line-length = 100
 target-version = "py39"
-
