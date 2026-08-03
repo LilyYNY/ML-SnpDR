@@ -43,12 +43,13 @@ test_that("stage registry preserves subnetDR numbering with ML inserted after st
   expect_true(all(stages$implemented[stages$stage %in% c("07", "08", "09")]))
 })
 
-test_that("complete runner selects the step-4 through step-9 chain", {
+test_that("complete runner selects the step-1 through step-9 chain", {
   path <- system.file("config", "default.yml", package = "MLSnpDR")
   run <- run_ML_SnpDR(path, dry_run = TRUE)
   expect_identical(
     run$plan$name,
     c(
+      "deps", "network_construction", "module_division",
       "module_selection", "module_annotation", "drug_response",
       "module_features", "ml_scoring", "module_triage",
       "sequence_smiles", "binding_score", "perturbation_score"

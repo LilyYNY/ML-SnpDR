@@ -5,6 +5,7 @@ dependencies:
   - python=3.9
   - r-base>=4.2
   - r-digest
+  - r-igraph
   - r-jsonlite
   - r-openxlsx
   - r-yaml
