@@ -1,5 +1,6 @@
 ^\.git$
 ^\.github$
+^\.pytest_cache$
 ^\.Rproj\.user$
 ^docs$
 ^config$
@@ -13,3 +14,4 @@
 ^\.Rcheck$
 ^\.\.Rcheck$
 ^LICENSE\.md$
+^CITATION\.cff$
