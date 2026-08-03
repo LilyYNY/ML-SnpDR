@@ -6,7 +6,10 @@
   "additionalProperties": true,
   "required": [
     "module_uid", "legacy_module_id", "network", "method", "subtype",
-    "module", "module_size", "node_file", "edge_file", "prefilter_pass"
+    "module", "module_size", "edge_count", "self_loops_excluded",
+    "node_file", "edge_file", "prefilter_pass", "prefilter_reason",
+    "node_sha256", "edge_sha256", "source_module_file",
+    "source_node_file", "source_edge_file"
   ],
   "properties": {
     "module_uid": {"type": "string", "pattern": "^(string|physicalppin|chengf)__(louvain|wf)__C[1-4]__M[0-9]+$"},
@@ -16,12 +19,16 @@
     "subtype": {"enum": ["C1", "C2", "C3", "C4"]},
     "module": {"type": "string", "pattern": "^M[0-9]+$"},
     "module_size": {"type": "integer", "minimum": 1},
+    "edge_count": {"type": "integer", "minimum": 1},
+    "self_loops_excluded": {"type": "integer", "minimum": 0},
     "node_file": {"type": "string", "minLength": 1},
     "edge_file": {"type": "string", "minLength": 1},
     "prefilter_pass": {"type": "boolean"},
     "prefilter_reason": {"type": "string"},
-    "node_sha256": {"type": ["string", "null"]},
-    "edge_sha256": {"type": ["string", "null"]}
+    "node_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "edge_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "source_module_file": {"type": "string", "minLength": 1},
+    "source_node_file": {"type": "string", "minLength": 1},
+    "source_edge_file": {"type": "string", "minLength": 1}
   }
 }
-

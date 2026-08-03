@@ -7,8 +7,11 @@
 mlsnpdr_stage_registry()
 }
 \value{
-A data frame describing the planned execution order and boundaries.
+A data frame describing execution order, analysis scope, primary
+input/output contracts and implementation status.
 }
 \description{
-Return the ML-SnpDR stage registry
+ML-SnpDR preserves subnetDR steps 1-9 and inserts the machine-learning
+selection chain between the original steps 6 and 7. Every primary output is
+the default primary input of the next dependent step.
 }

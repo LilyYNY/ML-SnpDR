@@ -8,12 +8,58 @@ paths:
   input_root: data/raw
   results_root: results
   cache_root: cache
+  subtype_file: data/raw/subtype.xlsx
+  annotation_gene_set_file: null
+  annotation_background_gene_file: null
+  drug_response_input_index_file: null
+  module_feature_input_file: null
+  ml_score_input_file: null
+  survival_input_file: null
+  protein_sequence_file: null
+  drug_smiles_file: null
+  binding_score_input_file: null
+  sensitivity_input_file: null
+  module_division_dir: results/03_module_division
+  module_selection_dir: results/04_module_selection
+  module_annotation_dir: results/05_module_annotation
+  drug_response_dir: results/06_drug_response
+  module_features_dir: results/06A_module_features
+  ml_scoring_dir: results/06B_ml_scoring
+  module_triage_dir: results/06C_module_triage
+  sequence_smiles_dir: results/07_sequence_smiles
+  binding_score_dir: results/08_binding_score
+  perturbation_score_dir: results/09_perturbation_score
+
+pipeline:
+  network_methods: [String, physicalPPIN, chengF]
+  module_methods: [Louvain, WF]
+  strict_inputs: true
+  write_module_plots: false
 
 module_prefilter:
   min_size_exclusive: 9
 
+annotation:
+  databases: [GO_BP, KEGG, HALLMARK]
+  species: Homo sapiens
+  pvalue_cutoff: 0.05
+  p_adjust_method: BH
+  p_adjust_cutoff: 0.05
+  qvalue_cutoff: 0.20
+  min_gene_set_size: 10
+  max_gene_set_size: 500
+  top_n: 15
+  write_module_files: true
+
 ml:
   feature_set: core34_v1
+  expected_feature_count: 34
+  model_version: gradient_boosting_nested_oof_v1
+  python_executable: python
+  outer_splits: 5
+  outer_repeats: 5
+  inner_splits: 3
+  n_jobs: 1
   ranking_score: nested_oof_target_subtype_probability
   top_k_per_subtype: 10
   require_predicted_subtype_match: true
@@ -38,7 +84,8 @@ candidate_selection:
 
 drug_response:
   panels: [PRISM, GDSC1, GDSC2, CTRP2]
-  analysis_scope: ml_top_k
+  input_roots: {}
+  analysis_scope: all_manifest_modules
   significance_metric: wilcoxon_p
   significance_cutoff: 0.05
   p_adjust_method: none
@@ -46,4 +93,5 @@ drug_response:
 post_selection:
   run_original_steps: [7, 8, 9]
   selected_only: true
-
+  binding_score_direction: lower_better
+  final_top_n_per_subtype: 10
