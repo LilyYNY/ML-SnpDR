@@ -1,17 +1,17 @@
-# ML-SnpDR 流程架构
+# ML-SnpDR Pipeline Architecture
 
-## 1. 设计目标
+## 1. Design goals
 
-ML-SnpDR 不是一条与 subnetDR 平行的新流程，而是在原第 6 步和第 7 步之间插入机器学习与临床证据筛选链。每一步都满足以下约束：
+ML-SnpDR is not a separate workflow running in parallel with subnetDR. It inserts a machine-learning and clinical-evidence triage chain between the original steps 6 and 7. Every stage follows these constraints:
 
-1. 可以单独调用，并由参数显式指定输入和输出。
-2. 主输出可以直接作为下一依赖步骤的主输入。
-3. 所有模块级表以 `module_uid` 一对一连接。
-4. 输入覆盖、身份、列类型和文件存在性均在计算前校验。
-5. 第 4–6B 步处理全部大小预筛模块；第 6C 步建立唯一边界；第 7–9 步只处理入选模块。
-6. 不使用 `setwd()`，不硬编码盘符，不靠递归目录扫描推断模块身份。
+1. It can be called independently, with inputs and outputs specified explicitly through function arguments.
+2. Its primary output can be used directly as the primary input to the next dependent stage.
+3. All module-level tables are joined one-to-one by `module_uid`.
+4. Input coverage, identity, column types, and file existence are validated before computation.
+5. Steps 4–6B process all size-prefiltered modules; step 6C establishes the single selection boundary; steps 7–9 process selected modules only.
+6. The workflow does not use `setwd()`, hard-code drive letters, or infer module identity through recursive directory scans.
 
-## 2. 执行图
+## 2. Execution graph
 
 ```mermaid
 flowchart TD
@@ -36,98 +36,98 @@ flowchart TD
     I --> J["09 process_prs_dti"]
 ```
 
-第 5 步提供解释和报告结果，不改变进入特征工程的模块全集。第 6 步同样不能按药物响应预先删除模块，否则会对机器学习后的证据比较造成选择偏倚。
+Step 5 provides interpretation and reporting outputs but does not alter the complete module set entering feature preparation. Step 6 likewise cannot remove modules on the basis of drug response before ML scoring, because doing so would introduce selection bias into post-ML evidence comparisons.
 
-## 3. 阶段注册表
+## 3. Stage registry
 
-| 编号 | 实现 | 范围 | 主输出 |
+| Number | Implementation | Scope | Primary output |
 |---|---|---|---|
-| 01 | `run_diff_expr_analysis()` | 队列；亚型 vs 其余样本 | `differential_expression.tsv` |
-| 02 | `run_network_construction()` | 亚型×网络 | `network_manifest.tsv`、PPI 边表 |
-| 03 | `module_division()` / `subtype_module()` | 亚型×网络×算法 | `module_division_manifest.tsv` |
-| 04 | `module_selection()` | 全部大小预筛模块 | `module_manifest.tsv` |
-| 05 | `functional_annotation()` | manifest 全部模块 | `module_annotation.tsv` |
-| 06 | `drug_response_analysis()` | manifest 全部模块×面板 | `drug_response_summary.tsv`、DRN |
-| 06A | `prepare_module_features()` | manifest 全部模块 | `module_features.tsv` |
-| 06B | `run_nested_ml_scoring()` / `prepare_ml_scores()` | manifest 全部模块 | `ml_scores.tsv`、`ml_top10.tsv` |
-| 06C | `triage_modules()` | 每亚型 ML Top10 | `selected_modules.tsv` |
-| 07 | `run_SEQCre()` | 每亚型最优模块 | `seq_smiles_manifest.tsv` |
-| 08 | `predict_BA()` | 每亚型最优模块 | `binding_scores.tsv` |
-| 09 | `process_prs_dti()` | 每亚型最优模块 | `final_candidates.tsv` |
+| 01 | `run_diff_expr_analysis()` | Cohort; each subtype vs all other samples | `differential_expression.tsv` |
+| 02 | `run_network_construction()` | Subtype × network | `network_manifest.tsv`, PPI edge tables |
+| 03 | `module_division()` / `subtype_module()` | Subtype × network × algorithm | `module_division_manifest.tsv` |
+| 04 | `module_selection()` | All size-prefiltered modules | `module_manifest.tsv` |
+| 05 | `functional_annotation()` | All modules in the manifest | `module_annotation.tsv` |
+| 06 | `drug_response_analysis()` | All manifest modules × panels | `drug_response_summary.tsv`, DRNs |
+| 06A | `prepare_module_features()` | All manifest modules | `module_features.tsv` |
+| 06B | `run_nested_ml_scoring()` / `prepare_ml_scores()` | All manifest modules | `ml_scores.tsv`, `ml_top10.tsv` |
+| 06C | `triage_modules()` | ML top 10 for each subtype | `selected_modules.tsv` |
+| 07 | `run_SEQCre()` | Optimal module from each subtype | `seq_smiles_manifest.tsv` |
+| 08 | `predict_BA()` | Optimal module from each subtype | `binding_scores.tsv` |
+| 09 | `process_prs_dti()` | Optimal module from each subtype | `final_candidates.tsv` |
 
-实际顺序由 `mlsnpdr_stage_registry()` 返回。`run_ML_SnpDR()` 选择注册表中的连续区间，`run_ml_snpdr_pipeline()` 负责读取配置和传递实际输出路径。
+The actual order is returned by `mlsnpdr_stage_registry()`. `run_ML_SnpDR()` selects a contiguous interval from the registry, while `run_ml_snpdr_pipeline()` reads the configuration and propagates actual output paths between stages.
 
-## 4. 两个数据边界
+## 4. Data boundaries
 
-第 1–4 步还建立三个连续的上游契约：`differential_expression.tsv` 固定亚型差异蛋白语义；`network_manifest.tsv` 固定亚型 PPI 文件身份；`module_division_manifest.tsv` 固定每个亚型-网络-算法组合及其节点/边模块文件。总运行器传递实际返回路径，不重新扫描或猜测上游结果。
+Steps 1–4 establish three consecutive upstream contracts: `differential_expression.tsv` fixes the semantics of subtype-specific differential proteins; `network_manifest.tsv` fixes the identity of subtype PPI files; and `module_division_manifest.tsv` fixes every subtype-network-algorithm combination and its node/edge module files. The top-level runner propagates returned paths instead of rescanning directories or guessing upstream outputs.
 
-### 4.1 全模块边界
+### 4.1 All-module boundary
 
-`module_manifest.tsv` 是第 4–6A 步共享的唯一模块全集。它包含：
+`module_manifest.tsv` is the single module universe shared by steps 4–6A. It contains:
 
-- 标准身份：network、method、subtype、module、`module_uid`；
-- 模块规模和内部边数；
-- 每模块 node/edge 文件相对路径；
-- 源文件、SHA256 和预筛状态。
+- Canonical identity: network, method, subtype, module, and `module_uid`.
+- Module size and internal-edge count.
+- Relative paths to per-module node and edge files.
+- Source files, SHA256 checksums, and prefilter status.
 
-第 5、6、6A 步均从同一份 manifest 读取模块，禁止分别扫描目录生成不同全集。
+Steps 5, 6, and 6A all read modules from the same manifest. They must not scan directories independently and construct different module universes.
 
-### 4.2 入选模块边界
+### 4.2 Selected-module boundary
 
-`selected_modules.tsv` 是第 7–9 步唯一允许的模块集合。第 6C 步将每个入选模块的 node、edge、DRN 和 DRN-info 文件复制到自己的输出目录，并在表中记录相对路径。
+`selected_modules.tsv` is the only permitted module set for steps 7–9. Step 6C copies the node, edge, DRN, and DRN-info files for every selected module into its output directory and records their relative paths in the table.
 
-第 7–9 步的安全要求：
+Safety requirements for steps 7–9:
 
-- 所有输入 `module_uid` 必须属于 selected 集合；
-- 不允许出现 selected 之外的预测或敏感性记录；
-- 不允许从文件夹名称重新推断模块；
-- strict 模式下缺失路径或查找项立即报错。
+- Every input `module_uid` must belong to the selected set.
+- Prediction or sensitivity records outside the selected set are not permitted.
+- Module identity must not be inferred from folder names.
+- In strict mode, missing paths or lookup entries raise an error immediately.
 
-## 5. 机器学习和筛选语义
+## 5. Machine-learning and triage semantics
 
-### 5.1 第 6A 步
+### 5.1 Step 6A
 
-`prepare_module_features()` 是特征契约适配器。它把既有 Core34 表映射到 manifest，固定 34 个数值特征的顺序，并输出来源哈希、特征 schema 和 QC。身份列和 `module_size` 不作为模型特征。
+`prepare_module_features()` is a feature-contract adapter. It maps an existing Core34 table to the manifest, fixes the order of the 34 numeric features, and writes source hashes, a feature schema, and QC results. Identity columns and `module_size` are not model features unless `module_size` is explicitly declared as part of Core34.
 
-### 5.2 第 6B 步
+### 5.2 Step 6B
 
-有两种受支持路径：
+Two execution paths are supported:
 
-- `run_nested_ml_scoring()`：调用仓库内 Python 脚本执行重复嵌套 OOF Gradient Boosting；
-- `prepare_ml_scores()`：导入外部已计算的 C1–C4 概率并执行同一套覆盖、概率、排名和 Top-K 校验。
+- `run_nested_ml_scoring()`: calls the repository's Python implementation of repeated nested OOF Gradient Boosting.
+- `prepare_ml_scores()`: imports externally calculated C1–C4 probabilities and applies the same coverage, probability, ranking, and Top-K validation.
 
-两者最终都产生一行一个模块的 `ml_scores.tsv`，以及每亚型受控 Top-K 的 `ml_top10.tsv`。
+Both paths produce `ml_scores.tsv` with one row per module and a controlled per-subtype Top-K table, `ml_top10.tsv` when `top_k=10`.
 
-### 5.3 第 6C 步
+### 5.3 Step 6C
 
-`triage_modules()` 只读取 ML Top10，并与预计算模块生存结果和第 6 步主药敏面板汇总连接。默认规则是：
+`triage_modules()` reads only the ML top 10 and joins them with precomputed module-survival results and the primary step-6 drug-sensitivity-panel summary. The default rules are:
 
-1. 通过 ML gate；
-2. `High_score_worse` 且 log-rank P ≤ 0.05；
-3. `module_size >= 30`；
-4. 存在 PRISM 结果；
-5. 依次按显著药物数、药物响应密度、目标亚型概率降序；
-6. 每亚型取 1 个模块。
+1. Pass the ML gate.
+2. Meet `High_score_worse` with log-rank P ≤ 0.05.
+3. Meet `module_size >= 30`.
+4. Have a PRISM result.
+5. Sort by significant-drug count, drug-response density, and target-subtype probability, all in descending order.
+6. Select one module per subtype.
 
-完整过程写入 `module_filtering_stepwise.tsv`，不是只保留最终结论。
+The complete process is written to `module_filtering_stepwise.tsv`, rather than retaining only the final decision.
 
-## 6. 第 7–9 步的改造
+## 6. Adaptation of steps 7–9
 
-原 subnetDR 实现会递归扫描所有 DRN/ModuleDivision 文件。ML-SnpDR 改为显式传递：
+The original subnetDR implementation recursively scans all DRN/ModuleDivision files. ML-SnpDR replaces this behavior with explicit data propagation:
 
-- `run_SEQCre(selected_modules.tsv, ...)`：从入选 DRN-info 提取实际蛋白和药物；
-- `predict_BA(selected_modules.tsv, seq_smiles_manifest.tsv, ...)`：只构造入选模块的 DPI；
-- `process_prs_dti(selected_modules.tsv, binding_scores.tsv, ...)`：只对入选模块计算敏感性和扰动分数。
+- `run_SEQCre(selected_modules.tsv, ...)`: extracts observed proteins and drugs from selected DRN-info files.
+- `predict_BA(selected_modules.tsv, seq_smiles_manifest.tsv, ...)`: constructs DPIs for selected modules only.
+- `process_prs_dti(selected_modules.tsv, binding_scores.tsv, ...)`: calculates sensitivity and perturbation scores for selected modules only.
 
-外部序列查询、结合模型和 ENM/PRS 工具可以先独立运行，再通过标准表导入；也可通过函数回调接入。这样把文件契约与具体第三方工具解耦，同时维持 7→8→9 的连续数据流。
+External sequence-query, binding, and ENM/PRS tools can run independently and import results through canonical tables, or they can be integrated through function callbacks. This separates file contracts from specific third-party tools while preserving the continuous 7 → 8 → 9 data flow.
 
-## 7. 复现与防误用
+## 7. Reproducibility and misuse prevention
 
-- YAML 保存随机种子、面板、阈值、特征版本、CV 参数和输出目录。
-- `dry_run = TRUE` 只校验配置并返回执行计划，不运行科学计算。
-- 输出目录通过临时目录完成后原子重命名；已存在的目标目录不会被静默覆盖。
-- Core34 来源、manifest 和概率表记录 SHA256 或来源路径。
-- Python 模型保存 fold 结果、元数据和 `fitted_model.joblib`。
-- 第 1–3 步与第 4–9 步均在本包实现，完整运行默认从 `deps` 开始。
+- YAML records random seeds, panels, thresholds, feature versions, CV parameters, and output directories.
+- `dry_run = TRUE` validates the configuration and returns an execution plan without scientific computation.
+- Output directories are completed in temporary locations and atomically renamed; existing target directories are not silently overwritten.
+- Core34 sources, manifests, and probability tables record SHA256 checksums or source paths.
+- The Python model stores fold results, metadata, and `fitted_model.joblib`.
+- Steps 1–3 and 4–9 are implemented in this package, and complete runs start from `deps` by default.
 
-所有输入输出列定义见 [io-contracts.md](io-contracts.md)。
+See [io-contracts.md](io-contracts.md) for all input and output column definitions.
