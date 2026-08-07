@@ -561,10 +561,6 @@ python -m pytest
 R CMD check .
 ```
 
-## Relationship to subnetDR
-
-This repository follows the scientific workflow and step 7–9 naming of subnetDR, while removing recursive scans of complete result directories and restricting these stages to the modules listed in `selected_modules.tsv`. Please cite the original subnetDR repository and the corresponding publications/method sources alongside ML-SnpDR.
-
 ## License
 
 MIT. Attribution and copyright for upstream subnetDR code and related methods remain with their original authors.
