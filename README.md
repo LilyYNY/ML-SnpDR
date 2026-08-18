@@ -8,27 +8,9 @@ All steps from 1 through 9 are implemented. By default, the top-level runner sta
 
 ## Workflow
 
-```mermaid
-flowchart TD
-    E["expression + subtype phenotype"] --> S1["01 DEPs: Wilcoxon + BH"]
-    S1 --> D["differential_expression.tsv"]
-    D --> S2["02 NetworkConstruction: subtype upregulated-protein PPI"]
-    S2 --> N["network_manifest.tsv"]
-    N --> S3["03 ModuleDivision: Louvain / WF"]
-    S3 --> S4["04 ModuleSelection"]
-    S4 --> M["module_manifest.tsv: all size-prefiltered modules"]
-    M --> S5["05 ModuleAnnotation: all modules"]
-    M --> S6["06 DrugResponse: all modules × all panels"]
-    M --> S6A["06A ModuleFeatures: Core34 for all modules"]
-    S6A --> S6B["06B MLScoring: all-module probabilities + subtype Top10"]
-    S6B --> S6C["06C ModuleTriage: Top10 survival + drug-evidence filtering"]
-    S6 --> S6C
-    M --> S6C
-    S6C --> SEL["selected_modules.tsv: optimal module per subtype"]
-    SEL --> S7["07 SEQCre: selected modules only"]
-    S7 --> S8["08 BindingScore: selected modules only"]
-    S8 --> S9["09 PScore: selected modules only"]
-```
+<p align="center">
+  <img src="figures/workflow_overview.png" alt="Workflow overview" width="400">
+</p>
 
 ML probabilities represent how strongly a module characterizes a subtype; they do not directly indicate efficacy or druggability. The ML top 10 must therefore undergo additional filtering by survival, module size, and drug-response evidence.
 
