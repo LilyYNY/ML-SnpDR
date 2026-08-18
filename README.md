@@ -9,7 +9,7 @@ All steps from 1 through 9 are implemented. By default, the top-level runner sta
 ## Workflow
 
 <p align="center">
-  <img src="github.png" alt="Workflow overview" width="1000">
+  <img src="github.png" alt="Workflow overview" width="1400">
 </p>
 
 ML probabilities represent how strongly a module characterizes a subtype; they do not directly indicate efficacy or druggability. The ML top 10 must therefore undergo additional filtering by survival, module size, and drug-response evidence.
