@@ -1,6 +1,6 @@
 # ML-SnpDR
 
-Machine Learning-guided signature-network-perturbation-based Drug Repositioning 
+Machine Learning-assisted signature-network-perturbation-based Drug Repositioning 
 
 ML-SnpDR builds on [SnpDR](https://github.com/CSB-SUDA/SnpDR) to provide a LUAD subtype-specific network drug-repurposing workflow. The main extension follows the original steps 4–6: all modules retained in step 4 are annotated and evaluated for drug response, Core34 features, and machine-learning scores; the top 10 ML-ranked modules from each subtype are then combined with survival and drug-response evidence to select one optimal module per subtype; finally, only the selected modules enter subnetDR steps 7–9.
 
